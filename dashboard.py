@@ -337,15 +337,13 @@ def build_map():
 PAGES = ["Overview", "Global News", "India Focus", "Expert Advisories", "Outbreak Map", "Vaccines & Treatments"]
 if "page" not in st.session_state:
     st.session_state.page = "Overview"
-if "severity_filter" not in st.session_state:
-    st.session_state.severity_filter = ["Critical", "High", "Moderate", "Low"]
 
 # ── Navbar ─────────────────────────────────────────────────────────────────────
 # Brand + nav buttons in one columns row, styled via CSS as a dark navbar
 brand_col, *page_cols, status_col = st.columns([2.2] + [1.4] * len(PAGES) + [1.6])
 
 with brand_col:
-    st.markdown('<div class="nav-brand-text">NANAVATI<span>Super Speciality Hospital</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="nav-brand-text">DISEASE INTEL<span>Global Intelligence Dashboard</span></div>', unsafe_allow_html=True)
 
 for col, p in zip(page_cols, PAGES):
     with col:
@@ -414,20 +412,6 @@ st.markdown("""
 
 page = st.session_state.page
 
-# ── Severity Filter ───────────────────────────────────────────────────────────
-_sf_col, _ = st.columns([3, 5])
-with _sf_col:
-    severity_filter = st.multiselect(
-        "Severity filter:",
-        ["Critical", "High", "Moderate", "Low"],
-        default=st.session_state.severity_filter,
-        key="sev_filter",
-        label_visibility="collapsed",
-    )
-    if severity_filter != st.session_state.severity_filter:
-        st.session_state.severity_filter = severity_filter
-severity_filter = st.session_state.severity_filter if st.session_state.severity_filter else ["Critical", "High", "Moderate", "Low"]
-
 # ── Sub-header ────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div style="font-size:0.8rem;color:#6b7c93;margin-bottom:16px;padding:2px 2px 10px 2px;border-bottom:1px solid #e8ecf0;">
@@ -436,33 +420,31 @@ st.markdown(f"""
   <span style="color:#a0aebe;">Updated {datetime.utcnow().strftime("%H:%M")} UTC</span>
 </div>""", unsafe_allow_html=True)
 
-# ── KPI Strip ─────────────────────────────────────────────────────────────────
-active    = [o for o in OUTBREAK_DATA if o["status"] == "Active"     and o["severity"] in severity_filter]
-critical  = [o for o in OUTBREAK_DATA if o["severity"] == "Critical" and o["severity"] in severity_filter]
-monitored = [o for o in OUTBREAK_DATA if o["status"] == "Monitoring" and o["severity"] in severity_filter]
-contained = [o for o in OUTBREAK_DATA if o["status"] == "Contained"]
-
-for col, num, label, color in zip(
-    st.columns(4),
-    [len(active), len(critical), len(monitored), len(contained)],
-    ["Active Outbreaks", "Critical Alerts", "Under Monitoring", "Contained"],
-    ["#c0392b", "#e67e22", "#2980b9", "#27ae60"],
-):
-    with col:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-num" style="color:{color}">{num}</div><div class="kpi-label">{label}</div></div>', unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
 # ═════════════════════════════ PAGES ═════════════════════════════════════════
 
 # ── OVERVIEW ─────────────────────────────────────────────────────────────────
 if page == "Overview":
+    # KPI Strip — Overview only
+    active    = [o for o in OUTBREAK_DATA if o["status"] == "Active"]
+    critical  = [o for o in OUTBREAK_DATA if o["severity"] == "Critical"]
+    monitored = [o for o in OUTBREAK_DATA if o["status"] == "Monitoring"]
+    contained = [o for o in OUTBREAK_DATA if o["status"] == "Contained"]
+    for col, num, label, color in zip(
+        st.columns(4),
+        [len(active), len(critical), len(monitored), len(contained)],
+        ["Active Outbreaks", "Critical Alerts", "Under Monitoring", "Contained"],
+        ["#c0392b", "#e67e22", "#2980b9", "#27ae60"],
+    ):
+        with col:
+            st.markdown(f'<div class="kpi-card"><div class="kpi-num" style="color:{color}">{num}</div><div class="kpi-label">{label}</div></div>', unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+
     col_left, col_right = st.columns([1.4, 1], gap="large")
 
     with col_left:
         st.markdown('<div class="section-title">Active Outbreak Monitor</div>', unsafe_allow_html=True)
         filtered = sorted(
-            [o for o in OUTBREAK_DATA if o["severity"] in severity_filter],
+            OUTBREAK_DATA,
             key=lambda x: ["Critical", "High", "Moderate", "Low"].index(x["severity"])
         )
         for o in filtered:
@@ -523,7 +505,7 @@ elif page == "India Focus":
     st.markdown('<div class="section-title">India Disease Intelligence</div>', unsafe_allow_html=True)
     india_keys = ["India", "Mumbai", "Delhi", "Kerala", "Bengal", "Rajasthan", "Chennai", "Kolkata", "Hyderabad", "Pune"]
     india_outbreaks = sorted(
-        [o for o in OUTBREAK_DATA if any(s in o["location"] for s in india_keys) and o["severity"] in severity_filter],
+        [o for o in OUTBREAK_DATA if any(s in o["location"] for s in india_keys)],
         key=lambda x: ["Critical", "High", "Moderate", "Low"].index(x["severity"])
     )
 
@@ -606,7 +588,7 @@ elif page == "Outbreak Map":
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('<div class="section-title">Outbreak Reference Table</div>', unsafe_allow_html=True)
     filtered = sorted(
-        [o for o in OUTBREAK_DATA if o["severity"] in severity_filter],
+        OUTBREAK_DATA,
         key=lambda x: ["Critical", "High", "Moderate", "Low"].index(x["severity"])
     )
     rows = "".join([f"""<tr>
@@ -656,6 +638,6 @@ elif page == "Vaccines & Treatments":
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="footer">
-  Nanavati Super Speciality Hospital &nbsp;·&nbsp; Global Disease Intelligence Platform &nbsp;·&nbsp;
+  Global Disease Intelligence Platform &nbsp;·&nbsp;
   Sources: WHO, Reuters, The Lancet, NEJM, STAT News, The Hindu, Times of India &nbsp;·&nbsp; For internal clinical use only
 </div>""", unsafe_allow_html=True)
