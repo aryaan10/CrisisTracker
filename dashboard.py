@@ -4,6 +4,7 @@ import folium
 from streamlit_folium import st_folium
 from datetime import datetime, timedelta
 import xml.etree.ElementTree as ET
+import re
 
 # ── Page Config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -12,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── All CSS Inline ────────────────────────────────────────────────────────────
+# ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
@@ -30,10 +31,9 @@ div[data-testid="stDecoration"] { display: none; }
 [data-testid="stSidebar"] { background: #0d1b2a !important; border-right: 1px solid #1e3a5f !important; }
 [data-testid="stSidebar"] * { color: #c8d6e5 !important; }
 [data-testid="stSidebar"] .stRadio > div > label {
-    display: flex !important; padding: 10px 14px !important;
-    border-radius: 6px !important; margin: 2px 0 !important;
-    cursor: pointer; font-size: 0.88rem !important; font-weight: 500 !important;
-    letter-spacing: 0.01em; transition: background 0.15s;
+    display: flex !important; padding: 10px 14px !important; border-radius: 6px !important;
+    margin: 2px 0 !important; cursor: pointer; font-size: 0.88rem !important;
+    font-weight: 500 !important; letter-spacing: 0.01em; transition: background 0.15s;
 }
 [data-testid="stSidebar"] .stRadio > div > label:hover { background: #1e3a5f !important; }
 [data-testid="stSidebar"] .stRadio > div > label[data-checked="true"] { background: #1565c0 !important; color: #fff !important; }
@@ -63,23 +63,20 @@ div[data-testid="stDecoration"] { display: none; }
 .outbreak-loc { font-size: 0.78rem; color: #6b7c93; margin-top: 2px; }
 .outbreak-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .outbreak-cases { font-size: 0.8rem; font-weight: 600; font-family: 'IBM Plex Mono', monospace; color: #34495e; }
-.status-tag { font-size: 0.72rem; font-weight: 600; }
 .badge { font-size: 0.68rem; font-weight: 600; color: #fff; padding: 3px 9px; border-radius: 10px; letter-spacing: 0.04em; text-transform: uppercase; }
+.status-tag { font-size: 0.72rem; font-weight: 600; }
 
-.who-item { display: block; padding: 11px 14px; border: 1px solid #e0e6ed; border-left: 3px solid #1565c0; background: #ffffff; border-radius: 0 8px 8px 0; margin-bottom: 8px; text-decoration: none !important; transition: border-color 0.15s, box-shadow 0.15s; }
-.who-item:hover { border-left-color: #c0392b; box-shadow: 0 3px 10px rgba(0,0,0,0.06); }
-.who-title { font-size: 0.85rem; font-weight: 600; color: #0d1b2a; line-height: 1.4; }
-.who-meta { font-size: 0.73rem; color: #8a9bb0; margin-top: 4px; }
-
-.article-card { display: block; background: #ffffff; border: 1px solid #e0e6ed; border-radius: 10px; padding: 18px; margin-bottom: 14px; text-decoration: none !important; transition: transform 0.15s, box-shadow 0.15s; min-height: 148px; }
+.article-card { display: block; background: #ffffff; border: 1px solid #e0e6ed; border-radius: 10px; padding: 18px; margin-bottom: 14px; text-decoration: none !important; transition: transform 0.15s, box-shadow 0.15s; }
 .article-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.09); border-color: #1565c0; }
 .article-meta { font-size: 0.72rem; color: #1565c0; font-weight: 600; letter-spacing: 0.03em; margin-bottom: 7px; }
 .article-title { font-size: 0.88rem; font-weight: 700; color: #0d1b2a; line-height: 1.45; margin-bottom: 8px; }
 .article-desc { font-size: 0.8rem; color: #5a6a7e; line-height: 1.5; }
 .article-link { font-size: 0.75rem; font-weight: 600; color: #1565c0; margin-top: 10px; }
 
-.authority-link { display: block; text-align: center; background: #ffffff; border: 1px solid #c5d3e0; border-radius: 8px; padding: 12px; font-size: 0.82rem; font-weight: 600; color: #1565c0 !important; text-decoration: none !important; transition: background 0.15s, box-shadow 0.15s; margin-bottom: 10px; }
-.authority-link:hover { background: #e8f0fe; box-shadow: 0 3px 10px rgba(21,101,192,0.12); }
+.authority-link { display: block; text-align: center; background: #ffffff; border: 1px solid #c5d3e0; border-radius: 8px; padding: 12px; font-size: 0.82rem; font-weight: 600; color: #1565c0 !important; text-decoration: none !important; transition: background 0.15s; margin-bottom: 10px; }
+.authority-link:hover { background: #e8f0fe; }
+
+.source-badge { display: inline-block; font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-right: 6px; letter-spacing: 0.04em; text-transform: uppercase; }
 
 .map-note { font-size: 0.8rem; color: #6b7c93; margin-bottom: 8px; }
 .map-legend { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: #34495e; font-weight: 600; margin-bottom: 12px; flex-wrap: wrap; }
@@ -95,85 +92,179 @@ div[data-testid="stDecoration"] { display: none; }
 .stTabs [data-baseweb="tab"] { font-size: 0.85rem !important; font-weight: 600 !important; color: #6b7c93 !important; padding: 10px 20px !important; border-radius: 0 !important; background: transparent !important; }
 .stTabs [aria-selected="true"] { color: #1565c0 !important; border-bottom: 2px solid #1565c0 !important; }
 
-.no-data { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 16px 20px; font-size: 0.85rem; color: #6d4c00; line-height: 1.7; }
-.no-data a { color: #1565c0; font-weight: 600; }
+.feed-error { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 14px 18px; font-size: 0.83rem; color: #6d4c00; }
+.feed-error a { color: #1565c0; font-weight: 600; }
 
-.footer { text-align: center; font-size: 0.72rem; color: #a0aebe; margin-top: 40px; padding-top: 16px; border-top: 1px solid #e0e6ed; letter-spacing: 0.02em; }
-
+.footer { text-align: center; font-size: 0.72rem; color: #a0aebe; margin-top: 40px; padding-top: 16px; border-top: 1px solid #e0e6ed; }
 [data-testid="stMultiSelect"] span[data-baseweb="tag"] { background-color: #1565c0 !important; border-radius: 4px !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Constants ─────────────────────────────────────────────────────────────────
-NEWS_API_KEY = st.secrets.get("NEWS_API_KEY", "")
+# ── Outbreak Data ─────────────────────────────────────────────────────────────
+# Update this list regularly with verified data from WHO / NCDC / ECDC
+SEVERITY_COLOR = {"Critical": "#c0392b", "High": "#e67e22", "Moderate": "#e2b800", "Low": "#27ae60"}
 
-SEVERITY_COLOR = {
-    "Critical": "#c0392b",
-    "High":     "#e67e22",
-    "Moderate": "#f1c40f",
-    "Low":      "#27ae60",
-}
-
-# Update this list regularly with verified outbreak data
 OUTBREAK_DATA = [
-    {"location": "Mumbai, India",      "lat": 19.076, "lon": 72.877,  "disease": "Leptospirosis",           "cases": 340,   "status": "Active",     "severity": "Moderate"},
+    {"location": "Mumbai, India",      "lat": 19.076, "lon": 72.877,  "disease": "Leptospirosis",            "cases": 340,   "status": "Active",     "severity": "Moderate"},
     {"location": "Kerala, India",      "lat": 10.850, "lon": 76.271,  "disease": "Nipah (Historical Alert)", "cases": 6,     "status": "Contained",  "severity": "High"},
-    {"location": "Delhi, India",       "lat": 28.613, "lon": 77.209,  "disease": "Dengue Surge",            "cases": 2100,  "status": "Active",     "severity": "Moderate"},
-    {"location": "West Bengal, India", "lat": 22.572, "lon": 88.363,  "disease": "Cholera",                 "cases": 180,   "status": "Active",     "severity": "Moderate"},
-    {"location": "Rajasthan, India",   "lat": 27.023, "lon": 74.217,  "disease": "Anthrax (Animal-linked)", "cases": 14,    "status": "Contained",  "severity": "High"},
-    {"location": "Southeast Asia",     "lat": 13.736, "lon": 100.523, "disease": "H5N1 Avian Influenza",   "cases": 12,    "status": "Monitoring", "severity": "High"},
-    {"location": "Central Africa",     "lat": -1.291, "lon": 28.859,  "disease": "Mpox Clade Ib",          "cases": 8900,  "status": "Active",     "severity": "Critical"},
-    {"location": "South America",      "lat": -3.119, "lon": -60.021, "disease": "Oropouche Fever",        "cases": 7600,  "status": "Active",     "severity": "Moderate"},
-    {"location": "Pakistan",           "lat": 30.375, "lon": 69.345,  "disease": "Polio (cVDPV)",          "cases": 27,    "status": "Active",     "severity": "Moderate"},
-    {"location": "East Africa",        "lat": 1.285,  "lon": 36.820,  "disease": "Rift Valley Fever",      "cases": 410,   "status": "Monitoring", "severity": "High"},
-    {"location": "United States",      "lat": 37.090, "lon": -95.712, "disease": "H5N1 Dairy Workers",     "cases": 67,    "status": "Monitoring", "severity": "Moderate"},
-    {"location": "China",              "lat": 35.861, "lon": 104.195, "disease": "HMPV Surge",             "cases": 15000, "status": "Monitoring", "severity": "Low"},
+    {"location": "Delhi, India",       "lat": 28.613, "lon": 77.209,  "disease": "Dengue Surge",             "cases": 2100,  "status": "Active",     "severity": "Moderate"},
+    {"location": "West Bengal, India", "lat": 22.572, "lon": 88.363,  "disease": "Cholera",                  "cases": 180,   "status": "Active",     "severity": "Moderate"},
+    {"location": "Rajasthan, India",   "lat": 27.023, "lon": 74.217,  "disease": "Anthrax (Animal-linked)",  "cases": 14,    "status": "Contained",  "severity": "High"},
+    {"location": "Southeast Asia",     "lat": 13.736, "lon": 100.523, "disease": "H5N1 Avian Influenza",    "cases": 12,    "status": "Monitoring", "severity": "High"},
+    {"location": "Central Africa",     "lat": -1.291, "lon": 28.859,  "disease": "Mpox Clade Ib",           "cases": 8900,  "status": "Active",     "severity": "Critical"},
+    {"location": "South America",      "lat": -3.119, "lon": -60.021, "disease": "Oropouche Fever",         "cases": 7600,  "status": "Active",     "severity": "Moderate"},
+    {"location": "Pakistan",           "lat": 30.375, "lon": 69.345,  "disease": "Polio (cVDPV)",           "cases": 27,    "status": "Active",     "severity": "Moderate"},
+    {"location": "East Africa",        "lat": 1.285,  "lon": 36.820,  "disease": "Rift Valley Fever",       "cases": 410,   "status": "Monitoring", "severity": "High"},
+    {"location": "United States",      "lat": 37.090, "lon": -95.712, "disease": "H5N1 Dairy Workers",      "cases": 67,    "status": "Monitoring", "severity": "Moderate"},
+    {"location": "China",              "lat": 35.861, "lon": 104.195, "disease": "HMPV Surge",              "cases": 15000, "status": "Monitoring", "severity": "Low"},
 ]
 
-# ── Data Fetchers ─────────────────────────────────────────────────────────────
-@st.cache_data(ttl=3600)
-def fetch_news(query: str, page_size: int = 9) -> list:
-    if not NEWS_API_KEY:
-        return []
-    try:
-        r = requests.get(
-            "https://newsapi.org/v2/everything",
-            params={
-                "q": query, "language": "en", "sortBy": "publishedAt",
-                "pageSize": page_size, "apiKey": NEWS_API_KEY,
-                "from": (datetime.utcnow() - timedelta(days=14)).strftime("%Y-%m-%d"),
-            },
-            timeout=8,
-        )
-        return r.json().get("articles", [])
-    except Exception:
-        return []
+# ── RSS Feed Sources (all free, no API key needed) ────────────────────────────
+# Each entry: (label, color, rss_url)
+RSS_SOURCES = {
+    "who": [
+        ("WHO",     "#1565c0", "https://www.who.int/rss-feeds/news-english.xml"),
+    ],
+    "global": [
+        ("WHO",     "#1565c0", "https://www.who.int/rss-feeds/news-english.xml"),
+        ("Reuters", "#c0392b", "https://feeds.reuters.com/reuters/healthNews"),
+        ("CDC",     "#27ae60", "https://tools.cdc.gov/api/v2/resources/media/132608.rss"),
+    ],
+    "india": [
+        ("The Hindu",    "#b71c1c", "https://www.thehindu.com/sci-tech/health/feeder/default.rss"),
+        ("Times of India", "#e65100", "https://timesofindia.indiatimes.com/rssfeeds/3908999.cms"),
+        ("NDTV Health",  "#1a237e", "https://feeds.feedburner.com/ndtvnews-health"),
+    ],
+    "expert": [
+        ("WHO",        "#1565c0", "https://www.who.int/rss-feeds/news-english.xml"),
+        ("The Lancet", "#6a1b9a", "https://www.thelancet.com/rssfeed/lancet_online.xml"),
+        ("NEJM",       "#004d40", "https://www.nejm.org/action/showFeed?type=etoc&feed=rss&jc=nejm"),
+    ],
+    "vaccines": [
+        ("WHO",     "#1565c0", "https://www.who.int/rss-feeds/news-english.xml"),
+        ("Reuters", "#c0392b", "https://feeds.reuters.com/reuters/healthNews"),
+        ("STAT",    "#f57f17", "https://www.statnews.com/feed/"),
+    ],
+}
 
-@st.cache_data(ttl=7200)
-def fetch_who_rss() -> list:
+DISEASE_KEYWORDS = [
+    "disease", "virus", "outbreak", "epidemic", "pandemic", "infection",
+    "pathogen", "vaccine", "flu", "dengue", "cholera", "mpox", "H5N1",
+    "WHO", "CDC", "ICMR", "health alert", "antimicrobial", "resistant",
+    "fever", "zoonotic", "emerging", "surveillance", "quarantine", "clinical trial",
+    "antiviral", "mortality", "morbidity", "contagious", "immunization",
+]
+
+INDIA_KEYWORDS = ["india", "indian", "icmr", "mohfw", "delhi", "mumbai", "kerala",
+                  "bengal", "rajasthan", "chennai", "hyderabad", "pune", "kolkata"]
+
+VACCINE_KEYWORDS = ["vaccine", "vaccination", "immunization", "antiviral", "drug",
+                    "treatment", "therapy", "clinical trial", "approved", "phase 3",
+                    "efficacy", "booster", "mRNA"]
+
+EXPERT_KEYWORDS = ["expert", "scientist", "researcher", "epidemiologist", "virologist",
+                   "government", "ministry", "advisory", "warning", "alert", "WHO",
+                   "CDC", "lancet", "nejm", "study", "research", "policy"]
+
+def strip_html(text: str) -> str:
+    return re.sub(r"<[^>]+>", "", text or "").strip()
+
+def parse_date(raw: str) -> str:
+    for fmt in ("%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S %Z",
+                "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ"):
+        try:
+            return datetime.strptime(raw.strip(), fmt).strftime("%d %b %Y")
+        except Exception:
+            pass
+    return raw[:10] if raw else ""
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_rss(url: str) -> list:
+    """Fetch and parse a single RSS feed. Returns list of article dicts."""
     try:
-        r = requests.get("https://www.who.int/rss-feeds/news-english.xml", timeout=10)
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; NanavatiDashboard/1.0)"}
+        r = requests.get(url, timeout=10, headers=headers)
+        r.raise_for_status()
         root = ET.fromstring(r.content)
         items = []
-        for item in root.iter("item"):
-            items.append({
-                "title": item.findtext("title", ""),
-                "url":   item.findtext("link", ""),
-                "publishedAt": item.findtext("pubDate", "")[:16],
-                "source": {"name": "WHO"},
-            })
-            if len(items) >= 8:
-                break
+        # Support both RSS <item> and Atom <entry>
+        ns = {"atom": "http://www.w3.org/2005/Atom"}
+        for item in list(root.iter("item")) + list(root.iter("{http://www.w3.org/2005/Atom}entry")):
+            title = strip_html(item.findtext("title") or item.findtext("{http://www.w3.org/2005/Atom}title") or "")
+            link  = (item.findtext("link") or item.findtext("{http://www.w3.org/2005/Atom}link") or "").strip()
+            # Atom links are attributes
+            if not link:
+                link_el = item.find("{http://www.w3.org/2005/Atom}link")
+                link = (link_el.get("href", "") if link_el is not None else "")
+            desc  = strip_html(
+                item.findtext("description") or
+                item.findtext("{http://www.w3.org/2005/Atom}summary") or
+                item.findtext("{http://www.w3.org/2005/Atom}content") or ""
+            )[:200]
+            pub   = parse_date(
+                item.findtext("pubDate") or
+                item.findtext("{http://www.w3.org/2005/Atom}published") or
+                item.findtext("{http://www.w3.org/2005/Atom}updated") or ""
+            )
+            if title and link:
+                items.append({"title": title, "url": link, "description": desc, "date": pub})
         return items
     except Exception:
         return []
 
-# ── UI Helpers ────────────────────────────────────────────────────────────────
-def severity_badge(level: str) -> str:
+def fetch_multi(sources: list, keywords: list = None, max_per_source: int = 6) -> list:
+    """Fetch from multiple RSS sources, optionally filter by keywords, deduplicate."""
+    results = []
+    seen = set()
+    for label, color, url in sources:
+        items = fetch_rss(url)
+        count = 0
+        for item in items:
+            if count >= max_per_source:
+                break
+            text = (item["title"] + " " + item["description"]).lower()
+            if keywords and not any(k.lower() in text for k in keywords):
+                continue
+            key = item["title"][:60]
+            if key in seen:
+                continue
+            seen.add(key)
+            item["source_label"] = label
+            item["source_color"] = color
+            results.append(item)
+            count += 1
+    return results
+
+def article_card(a: dict) -> str:
+    title  = a.get("title", "Untitled")[:115]
+    url    = a.get("url", "#")
+    label  = a.get("source_label", "Source")
+    color  = a.get("source_color", "#1565c0")
+    desc   = a.get("description", "")[:170]
+    date   = a.get("date", "")
+    return f"""<a class="article-card" href="{url}" target="_blank" rel="noopener noreferrer">
+      <div class="article-meta">
+        <span class="source-badge" style="background:{color};color:#fff">{label}</span>{date}
+      </div>
+      <div class="article-title">{title}</div>
+      <div class="article-desc">{desc}</div>
+      <div class="article-link">Read full article &rarr;</div>
+    </a>"""
+
+def render_grid(articles: list, cols: int = 2, fallback_links: str = ""):
+    if not articles:
+        st.markdown(f'<div class="feed-error">Could not load feed at this moment. Try refreshing, or visit these sources directly:<br>{fallback_links}</div>', unsafe_allow_html=True)
+        return
+    columns = st.columns(cols)
+    for i, a in enumerate(articles):
+        with columns[i % cols]:
+            st.markdown(article_card(a), unsafe_allow_html=True)
+
+def severity_badge(level):
     c = SEVERITY_COLOR.get(level, "#888")
     return f'<span class="badge" style="background:{c}">{level}</span>'
 
-def build_map() -> folium.Map:
+def build_map():
     m = folium.Map(location=[20, 30], zoom_start=2, tiles="CartoDB positron", prefer_canvas=True)
     for o in OUTBREAK_DATA:
         color  = SEVERITY_COLOR.get(o["severity"], "#888")
@@ -194,40 +285,6 @@ def build_map() -> folium.Map:
         ).add_to(m)
     return m
 
-def article_card(a: dict) -> str:
-    title  = (a.get("title") or "Untitled")[:110]
-    url    = a.get("url", "#")
-    source = (a.get("source") or {}).get("name", "Unknown")
-    desc   = (a.get("description") or "")[:160]
-    pub    = a.get("publishedAt", "")
-    try:
-        pub = datetime.fromisoformat(pub.replace("Z", "+00:00")).strftime("%d %b %Y")
-    except Exception:
-        pub = pub[:10]
-    return f"""<a class="article-card" href="{url}" target="_blank" rel="noopener noreferrer">
-      <div class="article-meta">{source} &nbsp;·&nbsp; {pub}</div>
-      <div class="article-title">{title}</div>
-      <div class="article-desc">{desc}</div>
-      <div class="article-link">Read full article &rarr;</div>
-    </a>"""
-
-def no_key_box(extra: str = "") -> str:
-    return f"""<div class="no-data">
-      Add your free NewsAPI key in Streamlit Secrets to load live articles.
-      Get one at <a href="https://newsapi.org/register" target="_blank">newsapi.org/register</a> (100 requests/day free).
-      {extra}
-    </div>"""
-
-def render_articles(query: str, cols: int = 2, n: int = 8, extra: str = ""):
-    articles = fetch_news(query, n)
-    if articles:
-        columns = st.columns(cols)
-        for i, a in enumerate(articles):
-            with columns[i % cols]:
-                st.markdown(article_card(a), unsafe_allow_html=True)
-    else:
-        st.markdown(no_key_box(extra), unsafe_allow_html=True)
-
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown('<div class="sidebar-logo">NANAVATI<span>Super Speciality Hospital</span></div>', unsafe_allow_html=True)
@@ -245,9 +302,9 @@ with st.sidebar:
         label_visibility="collapsed",
     )
     st.markdown("---")
-    st.markdown(f'<p class="sidebar-footer">Data refreshed hourly<br>Last update: {datetime.utcnow().strftime("%d %b %Y, %H:%M")} UTC</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="sidebar-footer">Feeds refresh every hour<br>Last update: {datetime.utcnow().strftime("%d %b %Y, %H:%M")} UTC</p>', unsafe_allow_html=True)
 
-# ── Top Header ────────────────────────────────────────────────────────────────
+# ── Header ────────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="top-header">
   <div>
@@ -303,16 +360,17 @@ if page == "Overview":
 
     with col_right:
         st.markdown('<div class="section-title">WHO Latest Alerts</div>', unsafe_allow_html=True)
-        who = fetch_who_rss()
-        if who:
-            for a in who[:6]:
-                st.markdown(f"""
-                <a class="who-item" href="{a['url']}" target="_blank">
-                  <div class="who-title">{a['title'][:105]}</div>
-                  <div class="who-meta">WHO &nbsp;·&nbsp; {a['publishedAt']}</div>
+        with st.spinner("Loading WHO feed..."):
+            who_items = fetch_rss("https://www.who.int/rss-feeds/news-english.xml")
+        if who_items:
+            for a in who_items[:7]:
+                st.markdown(f"""<a class="article-card" href="{a['url']}" target="_blank">
+                  <div class="article-meta"><span class="source-badge" style="background:#1565c0;color:#fff">WHO</span>{a['date']}</div>
+                  <div class="article-title">{a['title'][:105]}</div>
+                  <div class="article-link">Read full article &rarr;</div>
                 </a>""", unsafe_allow_html=True)
         else:
-            st.markdown(no_key_box('Or visit <a href="https://www.who.int/emergencies/disease-outbreak-news" target="_blank">WHO Outbreak News</a> directly.'), unsafe_allow_html=True)
+            st.markdown('<div class="feed-error">WHO feed unavailable. Visit <a href="https://www.who.int/emergencies/disease-outbreak-news" target="_blank">who.int</a> directly.</div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('<div class="section-title">Global Outbreak Map</div>', unsafe_allow_html=True)
@@ -321,13 +379,22 @@ if page == "Overview":
 # ── GLOBAL NEWS ──────────────────────────────────────────────────────────────
 elif page == "Global News":
     st.markdown('<div class="section-title">Global Disease and Epidemic News</div>', unsafe_allow_html=True)
-    tab1, tab2, tab3 = st.tabs(["Emerging Diseases", "Active Outbreaks", "Pandemic Preparedness"])
+    tab1, tab2, tab3 = st.tabs(["All Sources", "WHO Bulletins", "Reuters Health"])
+
     with tab1:
-        render_articles("emerging disease outbreak epidemic 2025", cols=3)
+        with st.spinner("Loading feeds..."):
+            articles = fetch_multi(RSS_SOURCES["global"], keywords=DISEASE_KEYWORDS, max_per_source=8)
+        render_grid(articles, cols=3, fallback_links='<a href="https://www.who.int/emergencies/disease-outbreak-news" target="_blank">WHO</a> | <a href="https://www.reuters.com/business/healthcare-pharmaceuticals/" target="_blank">Reuters Health</a>')
+
     with tab2:
-        render_articles("mpox H5N1 avian flu cholera outbreak WHO 2025", cols=3)
+        with st.spinner("Loading WHO feed..."):
+            who_articles = fetch_multi(RSS_SOURCES["who"], keywords=DISEASE_KEYWORDS, max_per_source=12)
+        render_grid(who_articles, cols=3, fallback_links='<a href="https://www.who.int/emergencies/disease-outbreak-news" target="_blank">WHO Disease Outbreak News</a>')
+
     with tab3:
-        render_articles("pandemic preparedness vaccine stockpile WHO 2025", cols=3)
+        with st.spinner("Loading Reuters feed..."):
+            reuters = fetch_multi([("Reuters", "#c0392b", "https://feeds.reuters.com/reuters/healthNews")], keywords=DISEASE_KEYWORDS, max_per_source=12)
+        render_grid(reuters, cols=3, fallback_links='<a href="https://www.reuters.com/business/healthcare-pharmaceuticals/" target="_blank">Reuters Health</a>')
 
 # ── INDIA FOCUS ───────────────────────────────────────────────────────────────
 elif page == "India Focus":
@@ -354,50 +421,65 @@ elif page == "India Focus":
                 {severity_badge(o['severity'])}
               </div>
             </div>""", unsafe_allow_html=True)
+
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('<div class="section-subtitle">Official India Health Authorities</div>', unsafe_allow_html=True)
         for name, url in [
-            ("MoHFW India", "https://www.mohfw.gov.in"),
-            ("ICMR",        "https://www.icmr.gov.in"),
-            ("NCDC India",  "https://ncdc.mohfw.gov.in"),
-            ("IDSP",        "https://idsp.mohfw.gov.in"),
+            ("Ministry of Health and Family Welfare", "https://www.mohfw.gov.in"),
+            ("ICMR — Indian Council of Medical Research", "https://www.icmr.gov.in"),
+            ("NCDC — National Centre for Disease Control", "https://ncdc.mohfw.gov.in"),
+            ("IDSP — Integrated Disease Surveillance", "https://idsp.mohfw.gov.in"),
         ]:
             st.markdown(f'<a class="authority-link" href="{url}" target="_blank">{name} &rarr;</a>', unsafe_allow_html=True)
 
     with col2:
-        st.markdown('<div class="section-subtitle">India News Feed</div>', unsafe_allow_html=True)
-        render_articles("India disease outbreak ICMR epidemic 2025", cols=1, n=6)
+        st.markdown('<div class="section-subtitle">India Health News</div>', unsafe_allow_html=True)
+        with st.spinner("Loading India feeds..."):
+            india_articles = fetch_multi(RSS_SOURCES["india"], keywords=DISEASE_KEYWORDS + INDIA_KEYWORDS, max_per_source=5)
+        render_grid(
+            india_articles, cols=1,
+            fallback_links='<a href="https://www.thehindu.com/sci-tech/health/" target="_blank">The Hindu Health</a> | <a href="https://timesofindia.indiatimes.com/life-style/health-fitness" target="_blank">TOI Health</a>'
+        )
 
 # ── EXPERT ADVISORIES ─────────────────────────────────────────────────────────
 elif page == "Expert Advisories":
     st.markdown('<div class="section-title">Expert and Government Advisories</div>', unsafe_allow_html=True)
-    tab1, tab2, tab3 = st.tabs(["Epidemiologists", "Government Measures", "WHO / CDC"])
+    tab1, tab2, tab3 = st.tabs(["WHO / CDC", "Medical Journals", "Government Measures"])
+
     with tab1:
-        render_articles("epidemiologist warns disease risk outbreak 2025", cols=2)
+        with st.spinner("Loading advisories..."):
+            items = fetch_multi(RSS_SOURCES["who"], keywords=DISEASE_KEYWORDS, max_per_source=10)
+        render_grid(items, cols=2, fallback_links='<a href="https://www.who.int/news" target="_blank">WHO News</a> | <a href="https://www.cdc.gov/media/dpk/diseases-and-conditions/index.html" target="_blank">CDC</a>')
+
     with tab2:
-        render_articles("government health measures quarantine disease control 2025", cols=2)
+        with st.spinner("Loading journal feeds..."):
+            journal_sources = [
+                ("The Lancet", "#6a1b9a", "https://www.thelancet.com/rssfeed/lancet_online.xml"),
+                ("NEJM",       "#004d40", "https://www.nejm.org/action/showFeed?type=etoc&feed=rss&jc=nejm"),
+                ("STAT News",  "#f57f17", "https://www.statnews.com/feed/"),
+            ]
+            items = fetch_multi(journal_sources, keywords=DISEASE_KEYWORDS + EXPERT_KEYWORDS, max_per_source=6)
+        render_grid(
+            items, cols=2,
+            fallback_links='<a href="https://www.thelancet.com" target="_blank">The Lancet</a> | <a href="https://www.nejm.org" target="_blank">NEJM</a> | <a href="https://www.statnews.com" target="_blank">STAT News</a>'
+        )
+
     with tab3:
-        who = fetch_who_rss()
-        if who:
-            cols = st.columns(2)
-            for i, a in enumerate(who):
-                with cols[i % 2]:
-                    st.markdown(article_card(a), unsafe_allow_html=True)
-        else:
-            st.markdown("""<div class="no-data">
-              Official sources:
-              <a href="https://www.who.int/emergencies/disease-outbreak-news" target="_blank">WHO Outbreak News</a> &nbsp;|&nbsp;
-              <a href="https://www.cdc.gov/outbreaks/index.html" target="_blank">CDC Outbreaks</a> &nbsp;|&nbsp;
-              <a href="https://ecdc.europa.eu/en/threats-and-outbreaks" target="_blank">ECDC Threats</a>
-            </div>""", unsafe_allow_html=True)
+        with st.spinner("Loading government feeds..."):
+            gov_sources = [
+                ("WHO",     "#1565c0", "https://www.who.int/rss-feeds/news-english.xml"),
+                ("Reuters", "#c0392b", "https://feeds.reuters.com/reuters/healthNews"),
+            ]
+            items = fetch_multi(gov_sources, keywords=EXPERT_KEYWORDS + ["government", "ministry", "policy", "regulation", "ban", "mandate"], max_per_source=8)
+        render_grid(items, cols=2, fallback_links='<a href="https://www.who.int/news" target="_blank">WHO</a> | <a href="https://ecdc.europa.eu/en/threats-and-outbreaks" target="_blank">ECDC</a>')
 
 # ── OUTBREAK MAP ──────────────────────────────────────────────────────────────
 elif page == "Outbreak Map":
     st.markdown('<div class="section-title">Global Outbreak Heatmap</div>', unsafe_allow_html=True)
-    st.markdown('<p class="map-note">Circle size and color indicate severity. Click any marker for detailed information.</p>', unsafe_allow_html=True)
+    st.markdown('<p class="map-note">Circle size and color indicate severity. Click any marker for details.</p>', unsafe_allow_html=True)
     legend = " &nbsp; ".join([f'<span class="legend-dot" style="background:{c}"></span>{s}' for s, c in SEVERITY_COLOR.items()])
     st.markdown(f'<div class="map-legend">{legend}</div>', unsafe_allow_html=True)
-    st_folium(build_map(), height=500, use_container_width=True)
+    st_folium(build_map(), height=520, use_container_width=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('<div class="section-title">Outbreak Reference Table</div>', unsafe_allow_html=True)
@@ -419,25 +501,39 @@ elif page == "Outbreak Map":
 elif page == "Vaccines & Treatments":
     st.markdown('<div class="section-title">Vaccines and New Treatments</div>', unsafe_allow_html=True)
     tab1, tab2, tab3 = st.tabs(["New Vaccines", "Antiviral Drugs", "Clinical Trials"])
+
+    vax_sources = [
+        ("WHO",       "#1565c0", "https://www.who.int/rss-feeds/news-english.xml"),
+        ("Reuters",   "#c0392b", "https://feeds.reuters.com/reuters/healthNews"),
+        ("STAT News", "#f57f17", "https://www.statnews.com/feed/"),
+    ]
+
     with tab1:
-        render_articles(
-            "new vaccine approved WHO FDA infectious disease 2025", cols=2,
-            extra='Official source: <a href="https://www.who.int/news-room/vaccines" target="_blank">WHO Vaccines</a>',
-        )
+        with st.spinner("Loading vaccine news..."):
+            items = fetch_multi(vax_sources, keywords=["vaccine", "vaccination", "immunization", "approved", "rollout", "efficacy", "booster", "mRNA"], max_per_source=6)
+        render_grid(items, cols=2, fallback_links='<a href="https://www.who.int/news-room/vaccines" target="_blank">WHO Vaccines</a> | <a href="https://www.fda.gov/vaccines-blood-biologics" target="_blank">FDA</a>')
+
     with tab2:
-        render_articles(
-            "antiviral drug approval treatment infectious disease 2025", cols=2,
-            extra='Track approvals: <a href="https://www.fda.gov/vaccines-blood-biologics" target="_blank">FDA</a>',
-        )
+        with st.spinner("Loading drug news..."):
+            items = fetch_multi(vax_sources, keywords=["antiviral", "drug", "treatment", "therapy", "approved", "FDA", "EMA", "medication", "pill"], max_per_source=6)
+        render_grid(items, cols=2, fallback_links='<a href="https://www.fda.gov/drugs/drug-approvals-and-databases/drug-approvals" target="_blank">FDA Drug Approvals</a>')
+
     with tab3:
-        render_articles(
-            "clinical trial phase 3 vaccine infectious disease 2025", cols=2,
-            extra='Track trials: <a href="https://clinicaltrials.gov" target="_blank">ClinicalTrials.gov</a> | <a href="https://ctri.nic.in" target="_blank">CTRI India</a>',
+        with st.spinner("Loading trial news..."):
+            trial_sources = [
+                ("STAT News", "#f57f17", "https://www.statnews.com/feed/"),
+                ("The Lancet","#6a1b9a", "https://www.thelancet.com/rssfeed/lancet_online.xml"),
+                ("NEJM",      "#004d40", "https://www.nejm.org/action/showFeed?type=etoc&feed=rss&jc=nejm"),
+            ]
+            items = fetch_multi(trial_sources, keywords=["clinical trial", "phase 2", "phase 3", "trial results", "randomized", "placebo", "study"], max_per_source=6)
+        render_grid(
+            items, cols=2,
+            fallback_links='<a href="https://clinicaltrials.gov" target="_blank">ClinicalTrials.gov</a> | <a href="https://ctri.nic.in" target="_blank">CTRI India</a>'
         )
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="footer">
   Nanavati Super Speciality Hospital &nbsp;·&nbsp; Global Disease Intelligence Platform &nbsp;·&nbsp;
-  Sources: WHO, NewsAPI, public health agencies &nbsp;·&nbsp; For internal clinical use only
+  Sources: WHO, Reuters, The Lancet, NEJM, STAT News, The Hindu, Times of India &nbsp;·&nbsp; For internal clinical use only
 </div>""", unsafe_allow_html=True)
