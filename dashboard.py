@@ -10,91 +10,89 @@ import re
 st.set_page_config(
     page_title="Nanavati Hospital | Global Disease Intelligence",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
-# Force light theme regardless of system preference
-st._config.set_option("theme.base", "light")
-st._config.set_option("theme.backgroundColor", "#f4f5f7")
-st._config.set_option("theme.secondaryBackgroundColor", "#0d1b2a")
-st._config.set_option("theme.textColor", "#1a1a2e")
-st._config.set_option("theme.primaryColor", "#1565c0")
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
-/* Force light theme regardless of system preference */
-:root, html[data-theme="dark"], html[data-theme="light"] {
-    color-scheme: light !important;
-}
-
 html, body, [class*="css"] {
     font-family: 'IBM Plex Sans', sans-serif !important;
     background-color: #f4f5f7 !important;
     color: #1a1a2e !important;
+    color-scheme: light !important;
 }
-/* Override Streamlit dark mode variables */
-[data-testid="stAppViewContainer"], [data-testid="stApp"] {
+/* Aggressively override dark mode */
+[data-testid="stApp"], [data-testid="stAppViewContainer"],
+[data-testid="stMain"], .main, .stApp {
     background-color: #f4f5f7 !important;
     color: #1a1a2e !important;
 }
 #MainMenu, footer, header { visibility: hidden; }
+/* Hide the sidebar toggle arrow Streamlit adds */
+[data-testid="collapsedControl"] { display: none !important; }
+[data-testid="stSidebar"] { display: none !important; }
 
-/* Sidebar toggle button — shown only when sidebar is collapsed */
-.sidebar-toggle-btn {
-    position: fixed;
-    top: 50%;
-    left: 0;
-    transform: translateY(-50%);
-    z-index: 9999;
-    background: #0d1b2a;
-    color: #c8d6e5;
-    border: none;
-    border-radius: 0 8px 8px 0;
-    padding: 14px 10px;
-    cursor: pointer;
-    font-size: 1.1rem;
-    box-shadow: 2px 2px 8px rgba(0,0,0,0.18);
-    transition: background 0.15s;
-    display: none;
-}
-.sidebar-toggle-btn:hover { background: #1565c0; }
-
-/* Show the button only when sidebar is collapsed */
-[data-testid="collapsedControl"] ~ * .sidebar-toggle-btn,
-[data-testid="stSidebar"][aria-expanded="false"] ~ [data-testid="stAppViewContainer"] .sidebar-toggle-btn {
-    display: block;
-}
-/* Detect collapsed state via the collapse button presence */
-section[data-testid="stSidebar"][style*="margin-left"] ~ div .sidebar-toggle-btn,
-section[data-testid="stSidebar"].st-emotion-cache-hidden ~ div .sidebar-toggle-btn {
-    display: block;
-}
-.block-container { padding: 1.5rem 2rem 2rem 2rem !important; max-width: 1600px; }
+.block-container { padding: 0 2rem 2rem 2rem !important; max-width: 1600px; }
 .stRadio > label { display: none; }
 div[data-testid="stDecoration"] { display: none; }
 
-[data-testid="stSidebar"] { background: #0d1b2a !important; border-right: 1px solid #1e3a5f !important; }
-[data-testid="stSidebar"] * { color: #c8d6e5 !important; }
-[data-testid="stSidebar"] .stRadio > div > label {
-    display: flex !important; padding: 10px 14px !important; border-radius: 6px !important;
-    margin: 2px 0 !important; cursor: pointer; font-size: 0.88rem !important;
-    font-weight: 500 !important; letter-spacing: 0.01em; transition: background 0.15s;
+/* ── TOP NAVBAR ── */
+.top-navbar {
+    display: flex;
+    align-items: center;
+    background: #0d1b2a;
+    border-radius: 0 0 10px 10px;
+    padding: 0 24px;
+    margin-bottom: 20px;
+    gap: 0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.13);
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
-[data-testid="stSidebar"] .stRadio > div > label:hover { background: #1e3a5f !important; }
-[data-testid="stSidebar"] .stRadio > div > label[data-checked="true"] { background: #1565c0 !important; color: #fff !important; }
-
-.sidebar-logo { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.1em; color: #ffffff !important; padding: 8px 4px 4px 4px; line-height: 1.4; }
-.sidebar-logo span { font-size: 0.7rem; font-weight: 400; letter-spacing: 0.04em; color: #7a9cc4 !important; display: block; }
-.sidebar-label { font-size: 0.68rem !important; font-weight: 600 !important; letter-spacing: 0.14em !important; color: #4a6f8a !important; margin: 0 0 6px 4px !important; }
-.sidebar-footer { font-size: 0.72rem !important; color: #4a6f8a !important; line-height: 1.6; }
-
-.top-header { display: flex; justify-content: space-between; align-items: center; background: #ffffff; border: 1px solid #e0e6ed; border-radius: 10px; padding: 18px 28px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-.header-title { font-size: 1.4rem; font-weight: 700; color: #0d1b2a; letter-spacing: -0.01em; }
-.header-sub { font-size: 0.82rem; color: #6b7c93; margin-top: 3px; }
-.header-status { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; color: #27ae60; background: #eafaf1; border: 1px solid #a9dfbf; border-radius: 20px; padding: 7px 16px; }
-.pulse-dot { width: 8px; height: 8px; background: #27ae60; border-radius: 50%; animation: pulse 2s infinite; }
+.nav-brand {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #ffffff !important;
+    padding: 14px 24px 14px 4px;
+    border-right: 1px solid #1e3a5f;
+    margin-right: 8px;
+    white-space: nowrap;
+    line-height: 1.3;
+}
+.nav-brand span {
+    font-size: 0.62rem;
+    font-weight: 400;
+    color: #7a9cc4 !important;
+    display: block;
+    letter-spacing: 0.04em;
+}
+.nav-link {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #c8d6e5 !important;
+    text-decoration: none !important;
+    padding: 18px 16px;
+    border-bottom: 3px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+}
+.nav-link:hover { color: #ffffff !important; border-bottom-color: #4a8fd4; }
+.nav-link.active { color: #ffffff !important; border-bottom-color: #1565c0; }
+.nav-spacer { flex: 1; }
+.nav-status {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 0.75rem; font-weight: 600; color: #27ae60 !important;
+    background: rgba(39,174,96,0.12); border: 1px solid rgba(39,174,96,0.3);
+    border-radius: 20px; padding: 6px 14px; white-space: nowrap;
+}
+.pulse-dot { width: 7px; height: 7px; background: #27ae60; border-radius: 50%; animation: pulse 2s infinite; flex-shrink: 0; }
 @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
 
 .kpi-card { background: #ffffff; border: 1px solid #e0e6ed; border-radius: 10px; padding: 20px 24px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
@@ -145,65 +143,6 @@ div[data-testid="stDecoration"] { display: none; }
 .footer { text-align: center; font-size: 0.72rem; color: #a0aebe; margin-top: 40px; padding-top: 16px; border-top: 1px solid #e0e6ed; }
 [data-testid="stMultiSelect"] span[data-baseweb="tag"] { background-color: #1565c0 !important; border-radius: 4px !important; }
 </style>
-""", unsafe_allow_html=True)
-
-# ── Sidebar Toggle Button (shown when sidebar is collapsed) ───────────────────
-st.markdown("""
-<script>
-(function() {
-    function addToggleBtn() {
-        if (document.getElementById('sidebar-toggle-fab')) return;
-        var btn = document.createElement('button');
-        btn.id = 'sidebar-toggle-fab';
-        btn.innerHTML = '&#9776;';
-        btn.title = 'Show sidebar';
-        btn.style.cssText = [
-            'position:fixed', 'top:50%', 'left:0',
-            'transform:translateY(-50%)', 'z-index:9999',
-            'background:#0d1b2a', 'color:#c8d6e5',
-            'border:none', 'border-radius:0 8px 8px 0',
-            'padding:14px 10px', 'cursor:pointer',
-            'font-size:1.2rem', 'box-shadow:2px 2px 8px rgba(0,0,0,0.25)',
-            'transition:background 0.15s', 'display:none'
-        ].join(';');
-        btn.onmouseenter = function(){ btn.style.background = '#1565c0'; };
-        btn.onmouseleave = function(){ btn.style.background = '#0d1b2a'; };
-        btn.onclick = function() {
-            var collapseBtn = document.querySelector('[data-testid="collapsedControl"]');
-            if (collapseBtn) { collapseBtn.click(); }
-        };
-        document.body.appendChild(btn);
-
-        function updateBtn() {
-            var sidebar = document.querySelector('[data-testid="stSidebar"]');
-            if (!sidebar) return;
-            var expanded = sidebar.getAttribute('aria-expanded');
-            var style = window.getComputedStyle(sidebar);
-            var ml = parseInt(style.marginLeft || '0');
-            var isHidden = (expanded === 'false') || ml < -50;
-            btn.style.display = isHidden ? 'block' : 'none';
-        }
-
-        var observer = new MutationObserver(updateBtn);
-        function observeSidebar() {
-            var sidebar = document.querySelector('[data-testid="stSidebar"]');
-            if (sidebar) {
-                observer.observe(sidebar, { attributes: true, attributeFilter: ['aria-expanded', 'style'] });
-                updateBtn();
-            } else {
-                setTimeout(observeSidebar, 300);
-            }
-        }
-        observeSidebar();
-        setInterval(updateBtn, 800);
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', addToggleBtn);
-    } else {
-        setTimeout(addToggleBtn, 500);
-    }
-})();
-</script>
 """, unsafe_allow_html=True)
 
 # ── Outbreak Data ─────────────────────────────────────────────────────────────
@@ -391,33 +330,66 @@ def build_map():
         ).add_to(m)
     return m
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown('<div class="sidebar-logo">NANAVATI<span>Super Speciality Hospital</span></div>', unsafe_allow_html=True)
-    st.markdown("---")
-    st.markdown('<p class="sidebar-label">NAVIGATION</p>', unsafe_allow_html=True)
-    page = st.radio("", [
-        "Overview", "Global News", "India Focus",
-        "Expert Advisories", "Outbreak Map", "Vaccines & Treatments"
-    ], label_visibility="collapsed")
-    st.markdown("---")
-    st.markdown('<p class="sidebar-label">SEVERITY FILTER</p>', unsafe_allow_html=True)
-    severity_filter = st.multiselect(
-        "", ["Critical", "High", "Moderate", "Low"],
-        default=["Critical", "High", "Moderate", "Low"],
-        label_visibility="collapsed",
-    )
-    st.markdown("---")
-    st.markdown(f'<p class="sidebar-footer">Feeds refresh every hour<br>Last update: {datetime.utcnow().strftime("%d %b %Y, %H:%M")} UTC</p>', unsafe_allow_html=True)
+# ── Navigation State ──────────────────────────────────────────────────────────
+PAGES = ["Overview", "Global News", "India Focus", "Expert Advisories", "Outbreak Map", "Vaccines & Treatments"]
+if "page" not in st.session_state:
+    st.session_state.page = "Overview"
+if "severity_filter" not in st.session_state:
+    st.session_state.severity_filter = ["Critical", "High", "Moderate", "Low"]
 
-# ── Header ────────────────────────────────────────────────────────────────────
+def set_page(p):
+    st.session_state.page = p
+
+# ── Top Navbar ────────────────────────────────────────────────────────────────
+nav_links = "".join([
+    f'<a class="nav-link{" active" if st.session_state.page == p else ""}" '
+    f'onclick="window.location.href=\'?page={p.replace(" ", "_")}\'">{p}</a>'
+    for p in PAGES
+])
 st.markdown(f"""
-<div class="top-header">
-  <div>
-    <div class="header-title">Global Disease Intelligence Dashboard</div>
-    <div class="header-sub">Pandemic and Epidemic Preparedness &nbsp;·&nbsp; {datetime.utcnow().strftime("%A, %d %B %Y")}</div>
-  </div>
-  <div class="header-status"><div class="pulse-dot"></div>Live Monitoring</div>
+<div class="top-navbar">
+  <div class="nav-brand">NANAVATI<span>Super Speciality Hospital</span></div>
+  {nav_links}
+  <div class="nav-spacer"></div>
+  <div class="nav-status"><div class="pulse-dot"></div>Live Monitoring</div>
+</div>""", unsafe_allow_html=True)
+
+# Use Streamlit buttons rendered invisibly via columns to handle nav clicks
+_nav_cols = st.columns(len(PAGES))
+for i, p in enumerate(PAGES):
+    with _nav_cols[i]:
+        if st.button(p, key=f"nav_{p}", use_container_width=True):
+            set_page(p)
+            st.rerun()
+
+# Hide the native nav buttons — they're just for click handling
+st.markdown("""<style>
+div[data-testid="stHorizontalBlock"]:has(button[kind="secondary"]) button {
+    visibility: hidden; height: 0; padding: 0; margin: 0; border: none; min-height: 0;
+}
+div[data-testid="stHorizontalBlock"]:has(button[kind="secondary"]) {
+    height: 0; overflow: hidden; margin: 0; padding: 0;
+}
+</style>""", unsafe_allow_html=True)
+
+page = st.session_state.page
+
+# ── Severity Filter (inline, below navbar) ────────────────────────────────────
+with st.expander("⚙️ Severity Filter", expanded=False):
+    severity_filter = st.multiselect(
+        "Show severities:",
+        ["Critical", "High", "Moderate", "Low"],
+        default=st.session_state.severity_filter,
+        key="severity_multiselect",
+    )
+    st.session_state.severity_filter = severity_filter
+severity_filter = st.session_state.severity_filter
+
+# ── Sub-header strip ──────────────────────────────────────────────────────────
+st.markdown(f"""
+<div style="font-size:0.8rem;color:#6b7c93;margin-bottom:18px;padding:8px 2px;">
+  Pandemic and Epidemic Preparedness &nbsp;·&nbsp; {datetime.utcnow().strftime("%A, %d %B %Y")} &nbsp;·&nbsp;
+  <span style="color:#a0aebe;font-size:0.75rem;">Last update: {datetime.utcnow().strftime("%H:%M")} UTC</span>
 </div>""", unsafe_allow_html=True)
 
 # ── KPI Strip ─────────────────────────────────────────────────────────────────
