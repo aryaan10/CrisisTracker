@@ -105,7 +105,7 @@ div[data-testid="stDecoration"] { display: none; }
 """, unsafe_allow_html=True)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-NEWS_API_KEY = st.secrets.get("48a6749a9dab46fba9d20971b719141a", "")
+NEWS_API_KEY = st.secrets.get("NEWS_API_KEY", "")
 
 SEVERITY_COLOR = {
     "Critical": "#c0392b",
