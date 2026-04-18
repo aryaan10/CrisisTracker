@@ -33,11 +33,12 @@ div[data-testid="stDecoration"] { display: none; }
 
 /* ── Navbar buttons via st.columns ── */
 .nav-bar-wrap {
-    background: #0d1b2a;
+    background: #ffffff;
     border-radius: 0 0 10px 10px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
     margin-bottom: 20px;
     padding: 0 8px;
+    border-bottom: 1px solid #e0e6ed;
 }
 .nav-bar-wrap [data-testid="stHorizontalBlock"] {
     gap: 0 !important;
@@ -51,7 +52,7 @@ div[data-testid="stDecoration"] { display: none; }
     border: none !important;
     border-bottom: 3px solid transparent !important;
     border-radius: 0 !important;
-    color: #c8d6e5 !important;
+    color: #4a5568 !important;
     font-family: 'IBM Plex Sans', sans-serif !important;
     font-size: 0.8rem !important;
     font-weight: 600 !important;
@@ -61,20 +62,20 @@ div[data-testid="stDecoration"] { display: none; }
     transition: color 0.15s, border-color 0.15s !important;
 }
 .nav-bar-wrap button:hover {
-    color: #ffffff !important;
+    color: #1565c0 !important;
     border-bottom-color: #4a8fd4 !important;
-    background: rgba(255,255,255,0.05) !important;
+    background: rgba(21,101,192,0.04) !important;
 }
-/* Active page button — we mark it with a data attr via JS, simpler: just use p-tag color change */
+/* Active page button */
 .nav-bar-wrap button:focus {
-    color: #ffffff !important;
+    color: #1565c0 !important;
     border-bottom-color: #1565c0 !important;
     box-shadow: none !important;
 }
 .nav-status {
     display: flex; align-items: center; gap: 6px;
-    font-size: 0.7rem; font-weight: 600; color: #27ae60 !important;
-    background: rgba(39,174,96,0.12); border: 1px solid rgba(39,174,96,0.3);
+    font-size: 0.7rem; font-weight: 600; color: #1e7e45 !important;
+    background: rgba(39,174,96,0.10); border: 1px solid rgba(39,174,96,0.35);
     border-radius: 20px; padding: 5px 11px; white-space: nowrap; margin: 6px 0;
 }
 .pulse-dot { width: 6px; height: 6px; background: #27ae60; border-radius: 50%;
