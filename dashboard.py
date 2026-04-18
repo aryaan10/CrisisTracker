@@ -525,16 +525,14 @@ def article_card_html(a):
     )
 
 def don_card_html(d):
-    title   = d.get("title","")[:120]
-    url     = d.get("url","#")
-    date    = d.get("date","")
-    summary = d.get("summary","")[:200]
+    title = d.get("title","").strip()
+    url   = d.get("url","#")
+    date  = d.get("date","")
     return (
         f'<a class="don-card" href="{url}" target="_blank" rel="noopener noreferrer">'
         f'<div class="don-title">{title}</div>'
-        + (f'<div class="article-desc">{summary}</div>' if summary else "")
-        + f'<div class="don-meta">WHO Disease Outbreak News &nbsp;·&nbsp; {date}</div>'
-        f'<div class="don-link">Read WHO report &rarr;</div></a>'
+        f'<div class="don-meta">{date}</div>'
+        f'</a>'
     )
 
 def render_grid(articles, cols=2, fallback_links="", max_items=10):
@@ -624,9 +622,10 @@ if page == "Overview":
     with col_left:
         st.markdown('<div class="section-title">WHO Disease Outbreak Reports</div>', unsafe_allow_html=True)
         if don_items:
-            for d in don_items[:15]:
+            html = "".join(don_card_html(d) for d in don_items[:10] if d.get("title","").strip())
+            for d in don_items[:10]:
                 st.session_state.seen_urls.add(d["url"])
-                st.markdown(don_card_html(d), unsafe_allow_html=True)
+            st.markdown(html, unsafe_allow_html=True)
         else:
             st.markdown(
                 '<div class="feed-error">Could not reach WHO. '
@@ -701,9 +700,10 @@ elif page == "India Focus":
     with col1:
         st.markdown('<div class="section-subtitle">WHO Reports — India</div>', unsafe_allow_html=True)
         if india_don:
+            html = "".join(don_card_html(d) for d in india_don[:10] if d.get("title","").strip())
             for d in india_don[:10]:
                 st.session_state.seen_urls.add(d["url"])
-                st.markdown(don_card_html(d), unsafe_allow_html=True)
+            st.markdown(html, unsafe_allow_html=True)
         else:
             st.markdown(
                 '<div class="feed-error">No recent WHO DON reports mentioning India. '
