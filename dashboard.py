@@ -31,72 +31,7 @@ html, body, [class*="css"],
 .block-container { padding: 0 1.5rem 2rem 1.5rem !important; max-width: 1600px; }
 div[data-testid="stDecoration"] { display: none; }
 
-/* ── Navbar buttons via st.columns ── */
-.nav-bar-wrap {
-    background: #ffffff;
-    border-radius: 0 0 10px 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-    margin-bottom: 20px;
-    padding: 0 8px;
-    border-bottom: 1px solid #e0e6ed;
-}
-.nav-bar-wrap [data-testid="stHorizontalBlock"] {
-    gap: 0 !important;
-    align-items: center !important;
-    background: transparent !important;
-    flex-wrap: wrap !important;
-}
-/* Override every Streamlit button layer in the navbar */
-.nav-bar-wrap button,
-.nav-bar-wrap [data-testid="baseButton-secondary"],
-.nav-bar-wrap [data-testid="baseButton-secondary"]:hover,
-.nav-bar-wrap [kind="secondary"] {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    border: none !important;
-    border-bottom: 3px solid transparent !important;
-    border-radius: 0 !important;
-    color: #1a3a5c !important;
-    font-family: 'IBM Plex Sans', sans-serif !important;
-    font-size: 0.8rem !important;
-    font-weight: 600 !important;
-    padding: 16px 8px !important;
-    width: 100% !important;
-    white-space: nowrap !important;
-    box-shadow: none !important;
-    transition: color 0.15s, border-color 0.15s, background 0.15s !important;
-}
-.nav-bar-wrap button p,
-.nav-bar-wrap [data-testid="baseButton-secondary"] p {
-    color: #1a3a5c !important;
-    font-weight: 600 !important;
-    font-size: 0.8rem !important;
-}
-.nav-bar-wrap button:hover,
-.nav-bar-wrap [data-testid="baseButton-secondary"]:hover {
-    background: #f0f4ff !important;
-    background-color: #f0f4ff !important;
-    border-bottom: 3px solid #4a8fd4 !important;
-    color: #1565c0 !important;
-}
-.nav-bar-wrap button:hover p,
-.nav-bar-wrap [data-testid="baseButton-secondary"]:hover p {
-    color: #1565c0 !important;
-}
-.nav-bar-wrap button:focus,
-.nav-bar-wrap button:active,
-.nav-bar-wrap [data-testid="baseButton-secondary"]:focus {
-    background: #e8f0fe !important;
-    background-color: #e8f0fe !important;
-    border-bottom: 3px solid #1565c0 !important;
-    color: #1565c0 !important;
-    box-shadow: none !important;
-    outline: none !important;
-}
-.nav-bar-wrap button:focus p,
-.nav-bar-wrap [data-testid="baseButton-secondary"]:focus p {
-    color: #1565c0 !important;
-}
+/* ── Navbar: pure HTML links, no st.button ── */
 .nav-status {
     display: flex; align-items: center; gap: 6px;
     font-size: 0.7rem; font-weight: 600; color: #1e7e45 !important;
@@ -593,21 +528,43 @@ def render_grid(articles, cols=2, fallback_links="", max_items=10):
                 st.markdown(f'<div>{html}</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# NAVBAR — pure st.button, wrapped in a styled div
+# NAVBAR — pure HTML, no st.button (avoids Streamlit's dark button override)
 # ══════════════════════════════════════════════════════════════════════════════
-st.markdown('<div class="nav-bar-wrap">', unsafe_allow_html=True)
-nav_cols = st.columns([1.5] * len(PAGES) + [1.4])
-for col, p in zip(nav_cols[:-1], PAGES):
-    with col:
-        if st.button(p, key=f"nav_{p}", use_container_width=True):
-            st.session_state.page = p
-            st.session_state.seen_urls = set()
-            st.rerun()
-with nav_cols[-1]:
-    st.markdown('<div class="nav-status"><span class="pulse-dot"></span>Live · WHO</div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+# Read page from query params so HTML links work
+_qp = st.query_params.get("page", None)
+if _qp and _qp in PAGES:
+    if st.session_state.page != _qp:
+        st.session_state.page = _qp
+        st.session_state.seen_urls = set()
 
 page = st.session_state.page
+
+def _nav_link(p, active):
+    style = (
+        "display:inline-block;padding:14px 18px;font-family:'IBM Plex Sans',sans-serif;"
+        "font-size:0.82rem;font-weight:600;text-decoration:none;white-space:nowrap;"
+        "border-bottom:3px solid transparent;transition:all 0.15s;"
+    )
+    if active:
+        style += "color:#1565c0;border-bottom-color:#1565c0;"
+    else:
+        style += "color:#4a5568;border-bottom-color:transparent;"
+    return f'<a href="?page={p}" style="{style}">{p}</a>'
+
+nav_html = (
+    '<div style="background:#ffffff;border-radius:0 0 10px 10px;'
+    'box-shadow:0 2px 8px rgba(0,0,0,0.07);border-bottom:1px solid #e0e6ed;'
+    'margin-bottom:20px;padding:0 8px;display:flex;align-items:center;flex-wrap:wrap;">'
+    + "".join(_nav_link(p, p == page) for p in PAGES)
+    + '<span style="margin-left:auto;display:flex;align-items:center;gap:6px;'
+    'font-size:0.7rem;font-weight:600;color:#1e7e45;background:rgba(39,174,96,0.10);'
+    'border:1px solid rgba(39,174,96,0.35);border-radius:20px;padding:5px 11px;'
+    'white-space:nowrap;margin-right:4px;">'
+    '<span style="width:6px;height:6px;background:#27ae60;border-radius:50%;'
+    'display:inline-block;animation:pulse 2s infinite;"></span>Live · WHO</span>'
+    '</div>'
+)
+st.markdown(nav_html, unsafe_allow_html=True)
 
 # Sub-header
 st.markdown(
