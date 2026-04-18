@@ -528,28 +528,27 @@ def render_grid(articles, cols=2, fallback_links="", max_items=10):
                 st.markdown(f'<div>{html}</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# NAVBAR — pure HTML, no st.button (avoids Streamlit's dark button override)
+# NAVBAR — pure HTML links with target="_self", page via query params
 # ══════════════════════════════════════════════════════════════════════════════
-# Read page from query params so HTML links work
 _qp = st.query_params.get("page", None)
-if _qp and _qp in PAGES:
-    if st.session_state.page != _qp:
-        st.session_state.page = _qp
-        st.session_state.seen_urls = set()
+if _qp and _qp in PAGES and st.session_state.page != _qp:
+    st.session_state.page = _qp
+    st.session_state.seen_urls = set()
 
 page = st.session_state.page
 
 def _nav_link(p, active):
-    style = (
-        "display:inline-block;padding:14px 18px;font-family:'IBM Plex Sans',sans-serif;"
-        "font-size:0.82rem;font-weight:600;text-decoration:none;white-space:nowrap;"
-        "border-bottom:3px solid transparent;transition:all 0.15s;"
+    base = (
+        "display:inline-block;padding:14px 18px;"
+        "font-family:'IBM Plex Sans',sans-serif;font-size:0.82rem;font-weight:600;"
+        "text-decoration:none;white-space:nowrap;border-bottom:3px solid transparent;"
+        "transition:all 0.15s;cursor:pointer;"
     )
     if active:
-        style += "color:#1565c0;border-bottom-color:#1565c0;"
+        base += "color:#1565c0;border-bottom-color:#1565c0;"
     else:
-        style += "color:#4a5568;border-bottom-color:transparent;"
-    return f'<a href="?page={p}" style="{style}">{p}</a>'
+        base += "color:#4a5568;"
+    return f'<a href="?page={p}" target="_self" style="{base}">{p}</a>'
 
 nav_html = (
     '<div style="background:#ffffff;border-radius:0 0 10px 10px;'
