@@ -510,18 +510,20 @@ def dedup_articles(articles: list) -> list:
     return fresh
 
 def article_card_html(a):
-    title = a.get("title","")[:115]
+    title = a.get("title","").strip()
     url   = a.get("url","#")
     label = a.get("source_label","")
     color = a.get("source_color","#1565c0")
-    desc  = a.get("description","")[:170]
+    desc  = a.get("description","").strip()[:170]
     date  = a.get("date","")
+    desc_html = f'<div class="article-desc">{desc}</div>' if desc else ""
     return (
         f'<a class="article-card" href="{url}" target="_blank" rel="noopener noreferrer">'
-        f'<div class="article-meta"><span class="source-badge" style="background:{color};color:#fff">{label}</span>{date}</div>'
+        f'<div class="article-meta"><span class="source-badge" style="background:{color};color:#fff">{label}</span>&nbsp;{date}</div>'
         f'<div class="article-title">{title}</div>'
-        + (f'<div class="article-desc">{desc}</div>' if desc else "")
-        + f'<div class="article-link">Read full article &rarr;</div></a>'
+        f'{desc_html}'
+        f'<div class="article-link">Read full article &rarr;</div>'
+        f'</a>'
     )
 
 def don_card_html(d):
@@ -635,11 +637,28 @@ if page == "Overview":
 
     with col_right:
         st.markdown('<div class="section-title">Latest Health News</div>', unsafe_allow_html=True)
-        with st.spinner("Loading…"):
-            news = fetch_multi(RSS_SOURCES["global"], keywords=DISEASE_KEYWORDS, max_per_source=6)
-        render_grid(news, cols=1,
-            fallback_links='<a href="https://www.who.int/news" target="_blank">WHO</a> | '
-                           '<a href="https://www.reuters.com/business/healthcare-pharmaceuticals/" target="_blank">Reuters</a>')
+        with st.spinner("Loading..."):
+            _news_sources = [
+                ("Reuters",   "#c0392b", "https://feeds.reuters.com/reuters/healthNews"),
+                ("STAT News", "#f57f17", "https://www.statnews.com/feed/"),
+                ("CDC",       "#27ae60", "https://tools.cdc.gov/api/v2/resources/media/132608.rss"),
+            ]
+            news = fetch_multi(_news_sources, keywords=DISEASE_KEYWORDS, max_per_source=6)
+        news = [a for a in news if a.get("title","").strip()]
+        def _sk(a):
+            try: return datetime.strptime(a.get("date",""), "%d %b %Y")
+            except: return datetime.min
+        news = sorted(news, key=_sk, reverse=True)[:10]
+        if news:
+            cards_html = "".join(article_card_html(a) for a in news)
+            st.markdown(cards_html, unsafe_allow_html=True)
+        else:
+            st.markdown(
+                '<div class="feed-error">Health news feeds unreachable. '
+                '<a href="https://www.statnews.com" target="_blank">STAT News</a> | '
+                '<a href="https://www.reuters.com/business/healthcare-pharmaceuticals/" target="_blank">Reuters Health</a></div>',
+                unsafe_allow_html=True
+            )
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('<div class="section-title">Live Outbreak Map</div>', unsafe_allow_html=True)
