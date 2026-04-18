@@ -538,8 +538,18 @@ def don_card_html(d):
         f'<div class="don-link">Read WHO report &rarr;</div></a>'
     )
 
-def render_grid(articles, cols=2, fallback_links=""):
+def render_grid(articles, cols=2, fallback_links="", max_items=10):
     fresh = dedup_articles(articles)
+    # Filter out articles with no meaningful title
+    fresh = [a for a in fresh if a.get("title", "").strip()]
+    # Sort by date descending and keep only top max_items
+    def _sort_key(a):
+        d = a.get("date", "")
+        try:
+            return datetime.strptime(d, "%d %b %Y")
+        except Exception:
+            return datetime.min
+    fresh = sorted(fresh, key=_sort_key, reverse=True)[:max_items]
     if not fresh:
         st.markdown(
             f'<div class="feed-error">No articles available or feed unreachable. Sources: {fallback_links}</div>',
@@ -636,8 +646,16 @@ if page == "Overview":
 
     with st.spinner("Building map from live articles…"):
         all_articles = fetch_multi(RSS_SOURCES["global"], keywords=DISEASE_KEYWORDS, max_per_source=20)
+        # Remove WHO RSS entries to avoid duplicating WHO DON
+        all_articles = [a for a in all_articles if a.get("source_label") != "WHO"]
+        seen_map_urls = {a["url"] for a in all_articles}
         if don_items:
             for d in don_items:
+                if "outbreak" not in d["title"].lower():
+                    continue
+                if d["url"] in seen_map_urls:
+                    continue
+                seen_map_urls.add(d["url"])
                 all_articles.append({"title": d["title"], "description": d.get("summary",""), "url": d["url"], "date": d.get("date","")})
     st_folium(build_outbreak_map(all_articles), height=380, use_container_width=True)
 
@@ -749,8 +767,17 @@ elif page == "Outbreak Map":
 
     with st.spinner("Loading articles…"):
         all_articles = fetch_multi(RSS_SOURCES["global"], keywords=DISEASE_KEYWORDS, max_per_source=30)
+        # Remove WHO RSS from global set to avoid duplicating WHO DON entries
+        all_articles = [a for a in all_articles if a.get("source_label") != "WHO"]
         don_items = fetch_who_don(limit=60)
+        seen_map_urls = {a["url"] for a in all_articles}
         for d in don_items:
+            # Only include WHO DON items whose title contains "outbreak"
+            if "outbreak" not in d["title"].lower():
+                continue
+            if d["url"] in seen_map_urls:
+                continue
+            seen_map_urls.add(d["url"])
             all_articles.append({
                 "title": d["title"],
                 "description": d.get("summary",""),
