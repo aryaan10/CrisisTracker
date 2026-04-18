@@ -564,7 +564,7 @@ def render_grid(articles, cols=2, fallback_links="", max_items=10):
     for col, html in zip(columns, col_html):
         if html:
             with col:
-                st.markdown(html, unsafe_allow_html=True)
+                st.markdown(f'<div>{html}</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # NAVBAR — pure st.button, wrapped in a styled div
@@ -627,7 +627,7 @@ if page == "Overview":
             html = "".join(don_card_html(d) for d in don_items[:10] if d.get("title","").strip())
             for d in don_items[:10]:
                 st.session_state.seen_urls.add(d["url"])
-            st.markdown(html, unsafe_allow_html=True)
+            st.markdown(f'<div>{html}</div>', unsafe_allow_html=True)
         else:
             st.markdown(
                 '<div class="feed-error">Could not reach WHO. '
@@ -651,7 +651,7 @@ if page == "Overview":
         news = sorted(news, key=_sk, reverse=True)[:10]
         if news:
             cards_html = "".join(article_card_html(a) for a in news)
-            st.markdown(cards_html, unsafe_allow_html=True)
+            st.markdown(f'<div>{cards_html}</div>', unsafe_allow_html=True)
         else:
             st.markdown(
                 '<div class="feed-error">Health news feeds unreachable. '
@@ -722,7 +722,7 @@ elif page == "India Focus":
             html = "".join(don_card_html(d) for d in india_don[:10] if d.get("title","").strip())
             for d in india_don[:10]:
                 st.session_state.seen_urls.add(d["url"])
-            st.markdown(html, unsafe_allow_html=True)
+            st.markdown(f'<div>{html}</div>', unsafe_allow_html=True)
         else:
             st.markdown(
                 '<div class="feed-error">No recent WHO DON reports mentioning India. '
