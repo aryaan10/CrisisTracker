@@ -452,17 +452,16 @@ def build_outbreak_map(articles: list) -> folium.Map:
     place_hits: dict = {}
     for art in articles:
         text = (art.get("title","") + " " + art.get("description","") + " " + art.get("summary","")).lower()
-        matched = set()
         for place in sorted_places:
-            if place in text and place not in matched:
+            if place in text:
                 # Avoid substring matches for short names (e.g. "mali" inside "somalia")
                 pattern = r'\b' + re.escape(place) + r'\b'
                 if re.search(pattern, text):
-                    matched.add(place)
                     if place not in place_hits:
                         place_hits[place] = []
-                    place_hits[place].append(art)
-                    break  # one place per article to avoid noise
+                    # Avoid adding the same article to the same place twice
+                    if not any(a["url"] == art["url"] for a in place_hits[place]):
+                        place_hits[place].append(art)
 
     m = folium.Map(location=[20, 15], zoom_start=2, tiles="CartoDB positron", prefer_canvas=True)
 
@@ -556,10 +555,16 @@ def render_grid(articles, cols=2, fallback_links="", max_items=10):
             unsafe_allow_html=True
         )
         return
-    columns = st.columns(cols)
+    # Build per-column HTML and emit each column as ONE st.markdown call.
+    # One st.markdown per card causes Streamlit to split/duplicate card rendering.
+    col_html = [""] * cols
     for i, a in enumerate(fresh):
-        with columns[i % cols]:
-            st.markdown(article_card_html(a), unsafe_allow_html=True)
+        col_html[i % cols] += article_card_html(a)
+    columns = st.columns(cols)
+    for col, html in zip(columns, col_html):
+        if html:
+            with col:
+                st.markdown(html, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # NAVBAR — pure st.button, wrapped in a styled div
@@ -646,8 +651,6 @@ if page == "Overview":
 
     with st.spinner("Building map from live articles…"):
         all_articles = fetch_multi(RSS_SOURCES["global"], keywords=DISEASE_KEYWORDS, max_per_source=20)
-        # Remove WHO RSS entries to avoid duplicating WHO DON
-        all_articles = [a for a in all_articles if a.get("source_label") != "WHO"]
         seen_map_urls = {a["url"] for a in all_articles}
         if don_items:
             for d in don_items:
@@ -767,10 +770,8 @@ elif page == "Outbreak Map":
 
     with st.spinner("Loading articles…"):
         all_articles = fetch_multi(RSS_SOURCES["global"], keywords=DISEASE_KEYWORDS, max_per_source=30)
-        # Remove WHO RSS from global set to avoid duplicating WHO DON entries
-        all_articles = [a for a in all_articles if a.get("source_label") != "WHO"]
-        don_items = fetch_who_don(limit=60)
         seen_map_urls = {a["url"] for a in all_articles}
+        don_items = fetch_who_don(limit=60)
         for d in don_items:
             # Only include WHO DON items whose title contains "outbreak"
             if "outbreak" not in d["title"].lower():
