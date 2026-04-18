@@ -46,31 +46,56 @@ div[data-testid="stDecoration"] { display: none; }
     background: transparent !important;
     flex-wrap: wrap !important;
 }
-/* Every button in the navbar */
-.nav-bar-wrap button {
-    background: transparent !important;
+/* Override every Streamlit button layer in the navbar */
+.nav-bar-wrap button,
+.nav-bar-wrap [data-testid="baseButton-secondary"],
+.nav-bar-wrap [data-testid="baseButton-secondary"]:hover,
+.nav-bar-wrap [kind="secondary"] {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
     border: none !important;
     border-bottom: 3px solid transparent !important;
     border-radius: 0 !important;
-    color: #4a5568 !important;
+    color: #1a3a5c !important;
     font-family: 'IBM Plex Sans', sans-serif !important;
     font-size: 0.8rem !important;
     font-weight: 600 !important;
     padding: 16px 8px !important;
     width: 100% !important;
     white-space: nowrap !important;
-    transition: color 0.15s, border-color 0.15s !important;
-}
-.nav-bar-wrap button:hover {
-    color: #1565c0 !important;
-    border-bottom-color: #4a8fd4 !important;
-    background: rgba(21,101,192,0.04) !important;
-}
-/* Active page button */
-.nav-bar-wrap button:focus {
-    color: #1565c0 !important;
-    border-bottom-color: #1565c0 !important;
     box-shadow: none !important;
+    transition: color 0.15s, border-color 0.15s, background 0.15s !important;
+}
+.nav-bar-wrap button p,
+.nav-bar-wrap [data-testid="baseButton-secondary"] p {
+    color: #1a3a5c !important;
+    font-weight: 600 !important;
+    font-size: 0.8rem !important;
+}
+.nav-bar-wrap button:hover,
+.nav-bar-wrap [data-testid="baseButton-secondary"]:hover {
+    background: #f0f4ff !important;
+    background-color: #f0f4ff !important;
+    border-bottom: 3px solid #4a8fd4 !important;
+    color: #1565c0 !important;
+}
+.nav-bar-wrap button:hover p,
+.nav-bar-wrap [data-testid="baseButton-secondary"]:hover p {
+    color: #1565c0 !important;
+}
+.nav-bar-wrap button:focus,
+.nav-bar-wrap button:active,
+.nav-bar-wrap [data-testid="baseButton-secondary"]:focus {
+    background: #e8f0fe !important;
+    background-color: #e8f0fe !important;
+    border-bottom: 3px solid #1565c0 !important;
+    color: #1565c0 !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+.nav-bar-wrap button:focus p,
+.nav-bar-wrap [data-testid="baseButton-secondary"]:focus p {
+    color: #1565c0 !important;
 }
 .nav-status {
     display: flex; align-items: center; gap: 6px;
